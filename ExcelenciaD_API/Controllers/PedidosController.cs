@@ -64,18 +64,18 @@ namespace ExcelenciaD_API.Controllers
                 return BadRequest(ModelState);
             }
 
-            // Asegúrate de que el cliente con el CustomerId exista
+            
             var customer = _db.Customers.FirstOrDefault(c => c.Id == pedido.CustomerId);
             if (customer == null)
             {
                 return BadRequest("No se encontró el cliente asociado al pedido.");
             }
 
-            pedido.CustomerId = customer.Id; // Asegúrate de que el CustomerId sea el correcto
+            pedido.CustomerId = customer.Id; 
             _db.Pedidos.Add(pedido);
             _db.SaveChanges();
 
-            // Al devolver el pedido, la propiedad Customer se incluirá automáticamente
+            
             return CreatedAtRoute("GetPedido", new { id = pedido.Id }, pedido);
         }
 
