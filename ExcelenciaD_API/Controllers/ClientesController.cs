@@ -1,9 +1,9 @@
 ﻿using ExcelenciaD_API.Data;
 using ExcelenciaD_API.Models;
-using ExcelenciaD_API.Models.Dto;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -16,16 +16,21 @@ namespace ExcelenciaD_API.Controllers
     public class ClientesController : ControllerBase
     {
         private readonly ILogger<ClientesController> _logger;
+        private readonly AplicationDbContext _db;
 
-        public ClientesController(ILogger<ClientesController> logger)
+        public ClientesController(ILogger<ClientesController> logger, AplicationDbContext db)
         {
             _logger = logger;
+            _db = db;
         }
 
-        [HttpGet]
-        public ActionResult<IEnumerable<CustomerDto>> GetCustomers()
+         [HttpGet]
+        public ActionResult<IEnumerable<Customer>> GetCustomers()
         {
-            var customers = CustomerStore.customerList;
+            var customers = _db.Customers
+                .Include(c => c.Pedidos) // Incluir la relación de pedidos
+                .ToList();
+
             return Ok(customers);
         }
 
@@ -33,14 +38,17 @@ namespace ExcelenciaD_API.Controllers
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
-        public ActionResult<CustomerDto> GetCustomer(int id)
+        public ActionResult<Customer> GetCustomer(int id)
         {
             if (id == 0)
             {
                 return BadRequest();
             }
 
-            var customer = CustomerStore.customerList.FirstOrDefault(e => e.Id == id);
+            var customer = _db.Customers
+                .Include(c => c.Pedidos) 
+                .FirstOrDefault(e => e.Id == id);
+
             if (customer == null)
             {
                 _logger.LogWarning($"No se encontró el cliente con ID: {id}");
@@ -55,54 +63,61 @@ namespace ExcelenciaD_API.Controllers
         [ProducesResponseType(201)]
         [ProducesResponseType(400)]
         [ProducesResponseType(500)]
-        public ActionResult<CustomerDto> CreateCustomer([FromBody] CustomerDto customerDto)
+        public ActionResult<Customer> CreateCustomer([FromBody] Customer customer)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            if (CustomerStore.customerList.Any(e => e.Name.ToLower() == customerDto.Name.ToLower()))
+            if (_db.Customers.Any(e => e.Name.ToLower() == customer.Name.ToLower()))
             {
                 ModelState.AddModelError("Error", "El cliente con ese nombre ya existe");
                 return BadRequest(ModelState);
             }
 
-            if (customerDto == null)
+            if (customer == null)
             {
-                return BadRequest(customerDto);
+                return BadRequest(customer);
             }
 
-            if (customerDto.Id > 0)
+            if (customer.Id > 0)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 
-            customerDto.Id = CustomerStore.customerList.OrderByDescending(e => e.Id).FirstOrDefault()?.Id + 1 ?? 1;
-            CustomerStore.customerList.Add(customerDto);
+            _db.Customers.Add(customer);
+            _db.SaveChanges();
 
-            return CreatedAtRoute("GetCustomer", new { id = customerDto.Id }, customerDto);
+            return CreatedAtRoute("GetCustomer", new { id = customer.Id }, customer);
         }
 
         [HttpPut("{id:int}")]
         [ProducesResponseType(204)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
-        public IActionResult UpdateCustomer(int id, [FromBody] CustomerDto customerDto)
+        public IActionResult UpdateCustomer(int id, [FromBody] Customer customer)
         {
-            if (id <= 0 || id != customerDto.Id)
+            if (id <= 0 || id != customer.Id)
             {
                 return BadRequest("ID de cliente no válido o no coincide con el cliente proporcionado.");
             }
 
-            var existingCustomer = CustomerStore.customerList.FirstOrDefault(c => c.Id == id);
+            var existingCustomer = _db.Customers.FirstOrDefault(c => c.Id == id);
             if (existingCustomer == null)
             {
                 return NotFound("Cliente no encontrado.");
             }
 
-            // Actualizar los datos del cliente existente
-            existingCustomer.Name = customerDto.Name;
+            existingCustomer.Name = customer.Name;
+            existingCustomer.LastName = customer.LastName;
+            existingCustomer.Email = customer.Email;
+            existingCustomer.Phone = customer.Phone;
+            existingCustomer.Address = customer.Address;
+            existingCustomer.City = customer.City;
+            existingCustomer.Country = customer.Country;
+
+            _db.SaveChanges();
 
             return NoContent();
         }
@@ -111,33 +126,47 @@ namespace ExcelenciaD_API.Controllers
         [ProducesResponseType(204)]
         [ProducesResponseType(400)]
         [ProducesResponseType(404)]
-        public IActionResult UpdateCustomer(int id, [FromBody] JsonPatchDocument<CustomerDto> patchDto)
+        public IActionResult UpdateCustomer(int id, [FromBody] JsonPatchDocument<Customer> patchDocument)
         {
-            if (patchDto == null)
+            if (patchDocument == null)
             {
                 return BadRequest("El cuerpo de la solicitud no puede estar vacío.");
             }
 
-            var existingCustomer = CustomerStore.customerList.FirstOrDefault(c => c.Id == id);
+            var existingCustomer = _db.Customers.FirstOrDefault(c => c.Id == id);
             if (existingCustomer == null)
             {
                 return NotFound("Cliente no encontrado.");
             }
 
-            var customerDto = new CustomerDto
+            var customerToPatch = new Customer
             {
                 Id = existingCustomer.Id,
-                Name = existingCustomer.Name
+                Name = existingCustomer.Name,
+                LastName = existingCustomer.LastName,
+                Email = existingCustomer.Email,
+                Phone = existingCustomer.Phone,
+                Address = existingCustomer.Address,
+                City = existingCustomer.City,
+                Country = existingCustomer.Country
             };
 
-            patchDto.ApplyTo(customerDto, ModelState);
+            patchDocument.ApplyTo(customerToPatch, ModelState);
 
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            existingCustomer.Name = customerDto.Name;
+            existingCustomer.Name = customerToPatch.Name;
+            existingCustomer.LastName = customerToPatch.LastName;
+            existingCustomer.Email = customerToPatch.Email;
+            existingCustomer.Phone = customerToPatch.Phone;
+            existingCustomer.Address = customerToPatch.Address;
+            existingCustomer.City = customerToPatch.City;
+            existingCustomer.Country = customerToPatch.Country;
+
+            _db.SaveChanges();
 
             return NoContent();
         }
@@ -153,13 +182,14 @@ namespace ExcelenciaD_API.Controllers
                 return BadRequest("ID de cliente no válido.");
             }
 
-            var customerToRemove = CustomerStore.customerList.FirstOrDefault(c => c.Id == id);
+            var customerToRemove = _db.Customers.FirstOrDefault(c => c.Id == id);
             if (customerToRemove == null)
             {
                 return NotFound("Cliente no encontrado.");
             }
 
-            CustomerStore.customerList.Remove(customerToRemove);
+            _db.Customers.Remove(customerToRemove);
+            _db.SaveChanges();
 
             return NoContent();
         }
