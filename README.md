@@ -1,8 +1,28 @@
 # ExcelenciaD
-para iniciar todo, hacer add-migration
-luego hacer update-database
-de ahi correrlo al proyecto mediante https y utilizar el crud de dicha api.
-ejemplos de creacion de clientes.
+
+## Instrucciones de Inicio
+
+Para iniciar el proyecto, sigue estos pasos:
+
+1. Ejecuta el comando `add-migration` para crear la migración.
+
+   ```bash
+   add-migration
+   ```
+
+2. Después, ejecuta el comando `update-database` para aplicar las migraciones.
+
+   ```bash
+   update-database
+   ```
+
+3. Inicia el proyecto y utilízalo mediante HTTPS. Puedes utilizar el CRUD de la API.
+
+## Ejemplos de Creación de Clientes
+
+Ejemplo de JSON para la creación de clientes:
+
+```json
 {
     "Name": "NombreCliente",
     "LastName": "ApellidoCliente",
@@ -12,16 +32,32 @@ ejemplos de creacion de clientes.
     "City": "CiudadCliente",
     "Country": "PaisCliente"
 }
-Ejemplos de creacion de pedido.
+```
+
+## Ejemplos de Creación de Pedidos
+
+Ejemplo de JSON para la creación de pedidos:
+
+```json
 {
     "CustomerId": 1,
     "FechaPedido": "2024-02-27T09:42:36.999Z",
     "Total": "TotalPedido",
     "Detalles": "DetallesPedido"
 }
-por lo general la fecha de pedido se pone automaticamente en el body del json de swagger por lo tanto solamente habria que hacer el customer que se le quiere agregar ese pedido y los demas
-ejemplos de patch 
-{
+```
+
+Por lo general, la fecha de pedido se genera automáticamente en el cuerpo del JSON en Swagger. Solamente es necesario proporcionar el cliente al que se le desea agregar ese pedido y los demás detalles.
+
+## Ejemplos de Parcheo (Patch)
+
+Ejemplos de JSON para operaciones de parcheo (patch):
+
+### Parcheo de Pedidos
+
+```json
+[
+    {
         "op": "replace",
         "path": "/Detalles",
         "value": "NuevosDetalles"
@@ -31,8 +67,15 @@ ejemplos de patch
         "path": "/Total",
         "value": "NuevoTotal"
     }
-    Customers!
- {
+   
+]
+```
+
+### Parcheo de Clientes
+
+```json
+[
+    {
         "op": "replace",
         "path": "/Name",
         "value": "NuevoNombre"
@@ -42,4 +85,8 @@ ejemplos de patch
         "path": "/Email",
         "value": "nuevo@correo.com"
     }
+    
+]
+```
 
+¡Listo para comenzar con ExcelenciaD!
